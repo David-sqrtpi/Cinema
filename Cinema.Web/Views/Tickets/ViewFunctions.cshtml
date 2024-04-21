@@ -1,0 +1,44 @@
+﻿@model IEnumerable<Cinema.Web.Models.ViewModels.IndexFunctionViewModel>
+
+@{
+	ViewData["Title"] = "ViewFunctions";
+	var function = Model.FirstOrDefault();
+}
+
+<h1>Available functions for @function.Movie.Title (@function.Movie.Year)</h1>
+
+<table class="table">
+	<thead>
+		<tr>
+			<th>
+				@Html.DisplayNameFor(model => model.Price)
+			</th>
+			<th>
+				@Html.DisplayNameFor(model => model.FunctionDate)
+			</th>
+			<th>
+				@Html.DisplayNameFor(model => model.AvailableSeats)
+			</th>
+			<th></th>
+		</tr>
+	</thead>
+	<tbody>
+		@foreach (var item in Model)
+		{
+			<tr>
+				<td>
+					@Html.DisplayFor(modelItem => item.Price)
+				</td>
+				<td>
+					@item.FunctionDate.ToString("dddd, dd MMMM yyyy 'at' HH:MM tt")
+				</td>
+				<td>
+					@Html.DisplayFor(modelItem => item.AvailableSeats)
+				</td>
+				<td>
+					<button onclick="location.href='@Url.Action("Buy", new { FunctionId = item.FunctionId })'" type="button" class="btn btn-primary">Buy</button>
+				</td>
+			</tr>
+		}
+	</tbody>
+</table>

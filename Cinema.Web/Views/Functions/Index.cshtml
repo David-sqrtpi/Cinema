@@ -1,0 +1,58 @@
+﻿@model IEnumerable<Cinema.Web.Models.ViewModels.IndexFunctionViewModel>
+
+@{
+	ViewData["Title"] = "Index";
+}
+
+<h1>Functions</h1>
+
+<p>
+	<a asp-action="Create">Create New</a>
+</p>
+
+<table class="table">
+	<thead>
+		<tr>
+			<th>
+				@Html.DisplayNameFor(model => model.Movie.PosterImage)
+			</th>
+			<th>
+				@Html.DisplayNameFor(model => model.Movie.Title)
+			</th>
+			<th>
+				@Html.DisplayNameFor(model => model.Price)
+			</th>
+			<th>
+				@Html.DisplayNameFor(model => model.FunctionDate)
+			</th>
+			<th>
+				@Html.DisplayNameFor(model => model.AvailableSeats)
+			</th>
+			@* <th></th> *@
+		</tr>
+	</thead>
+	<tbody>
+		@foreach (var item in Model)
+		{
+			<tr>
+				<td>
+					<a asp-action="Details" asp-route-id="@item.FunctionId" target="_blank">
+						<img src=@item.Movie.PosterImage width="150" height="225" />
+					</a>
+				</td>
+				<td>
+					@Html.DisplayFor(modelItem => item.Movie.Title)
+				</td>
+				<td>
+					@Html.DisplayFor(modelItem => item.Price)
+				</td>
+				<td>
+					@item.FunctionDate.ToString("dddd, dd MMMM yyyy 'at' HH:MM tt")
+				</td>
+				<td>
+					@Html.DisplayFor(modelItem => item.AvailableSeats)
+				</td>
+			</tr>
+		}
+	</tbody>
+</table>

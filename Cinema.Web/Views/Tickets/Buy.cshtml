@@ -1,0 +1,101 @@
+﻿@model Cinema.Web.Models.ViewModels.TicketViewModel;
+
+@{
+    ViewData["Title"] = "Details";
+    var fixedTitle = $"{Model.Movie.Title} ({Model.Movie.Year})";
+}
+
+<h1>Buy a ticket</h1>
+
+<div>
+    <h4>@Html.DisplayFor(model => fixedTitle)</h4>
+    <hr />
+
+    <img src=@Html.DisplayFor(model => model.Movie.PosterImage) width="300" height="450"/>
+
+    <dl class="row">
+        <dt class="col-sm-2">
+            @* @Html.DisplayNameFor(model => model.Price) *@
+            Genre
+        </dt>
+        <dd class="col-sm-10">
+            @* @Html.DisplayFor(model => model.Price) *@
+            @Html.DisplayFor(model => model.Movie.Genre)
+        </dd>
+        <dt class="col-sm-2">
+            Director
+        </dt>
+        <dd class="col-sm-10">
+            @Html.DisplayFor(model => model.Movie.Director)
+        </dd>
+        <dt class="col-sm-2">
+            Cast
+        </dt>
+        <dd class="col-sm-10">
+            @Html.DisplayFor(model => model.Movie.Cast)
+        </dd>
+        <dt class="col-sm-2">
+            @* @Html.DisplayNameFor(model => model.Price) *@
+            Price
+        </dt>
+        <dd class="col-sm-10">
+            @* @Html.DisplayFor(model => model.Price) *@
+            @Html.DisplayFor(model => model.Function.Price)
+        </dd>
+        <dt class="col-sm-2">
+            @* @Html.DisplayNameFor(model => model.FunctionDate) *@
+            Function Date
+        </dt>
+        <dd class="col-sm-10">
+            @* @Html.DisplayFor(model => model.FunctionDate) *@
+            @Model.Function.FunctionDate.ToString("dddd, dd MMMM yyyy 'at' HH:MM tt")
+        </dd>
+    </dl>
+</div>
+<div>
+
+    <form asp-action="Confirm" class="col-6">
+        <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+        <input type="hidden" asp-for="FunctionId" />
+        <div class="form-group">
+            <label asp-for="Seats" class="control-label"></label>
+            @* <input asp-for="Seats" class="form-control" id="testo"/> *@
+            @* <button type="button" class="btn btn-primary" onclick="increment(-1)">-</button> *@
+            <input asp-for="Seats" id="testo" value="1" class="form-control"></input>
+            @* <button type="button" class="btn btn-primary" onclick="increment()">+</button> *@
+            <span asp-validation-for="Seats" class="text-danger"></span>
+        </div>
+        <div class="form-group">
+            <label asp-for="UserName" class="control-label"></label>
+            <input asp-for="UserName" class="form-control"/>
+            <span asp-validation-for="UserName" class="text-danger"></span>
+        </div>
+        <div class="form-group">
+            <label asp-for="Email" class="control-label"></label>
+            <input asp-for="Email" class="form-control"/>
+            <span asp-validation-for="Email" class="text-danger"></span>
+        </div>
+        <div class="form-group">
+            <input type="submit" value="Confirm" class="btn btn-primary" />
+        </div>
+    </form>
+
+    @* @Html.ActionLink("Confirm", "Confirm", new { FunctionId = Model.Function.FunctionId }) *@
+    @* <a asp-action="Buy" asp-route-id="@Model?.FunctionId">Buy</a> | *@
+    <a asp-action="Index">Back to List</a>
+</div>
+
+@section Scripts {
+    <script>
+        function increment(increment = 1) {
+            var testo = document.getElementById("testo");
+            console.log(testo);
+            testo.value = parseInt(testo.value) + increment
+            // @Model.Seats = @Model.Seats - 1;
+        }
+    </script>
+
+    @{
+        await Html.RenderPartialAsync("_ValidationScriptsPartial");
+    }
+}

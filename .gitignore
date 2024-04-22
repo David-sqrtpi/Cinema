@@ -361,3 +361,5 @@ MigrationBackup/
 
 # Fody - auto-generated XML schema
 FodyWeavers.xsd
+/Cinema.Services.Email/appsettings.Production.json
+/Cinema.Services.Email/appsettings.Development.json

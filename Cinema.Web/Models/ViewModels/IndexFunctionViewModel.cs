@@ -13,6 +13,7 @@ public class IndexFunctionViewModel
     public decimal Price { get; set; }
 
 	[Display(Name = "Function Date")]
+	[DisplayFormat(DataFormatString = "{0:dddd, dd MMMM yyyy 'at' HH:mm tt}")]
 	public DateTime FunctionDate { get; set; }
 
 	[Display(Name = "Available Seats")]

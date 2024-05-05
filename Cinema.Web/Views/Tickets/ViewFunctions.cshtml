@@ -30,7 +30,7 @@
 					@Html.DisplayFor(modelItem => item.Price)
 				</td>
 				<td>
-					@item.FunctionDate.ToString("dddd, dd MMMM yyyy 'at' HH:MM tt")
+					@Html.DisplayFor(model => item.FunctionDate)
 				</td>
 				<td>
 					@Html.DisplayFor(modelItem => item.AvailableSeats)

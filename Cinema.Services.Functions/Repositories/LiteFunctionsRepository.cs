@@ -1,17 +1,18 @@
-﻿using Cinema.Services.Functions.Models;
+﻿using Cinema.Persistence;
+using Cinema.Services.Functions.Models;
 
 namespace Cinema.Services.Functions.Repositories;
 
 public class LiteFunctionsRepository(LiteFunctionsContext db) : IFunctionsRepository
 {
-	public Task Create(Function funcion)
+	public async Task Create(Function function)
 	{
-		throw new NotImplementedException();
+		await db.Create(function);
 	}
 
-	public Task DeleteById(Guid ids)
+	public async Task DeleteById(Guid id)
 	{
-		throw new NotImplementedException();
+		await db.DeleteById<Function>(id);
 	}
 
 	public Task DeleteList(IEnumerable<Guid> ids)
@@ -19,19 +20,19 @@ public class LiteFunctionsRepository(LiteFunctionsContext db) : IFunctionsReposi
 		throw new NotImplementedException();
 	}
 
-	public Task Update(Function function)
+	public async Task Update(Function function)
 	{
-		throw new NotImplementedException();
+		await db.UpdateExtension(function);
 	}
 
-	public Task<IEnumerable<Function>> ReadAll()
+	public async Task<List<Function>> ReadAll()
 	{
-		throw new NotImplementedException();
+		return await db.Functions.ReadAll();
 	}
 
-	public Task<Function> ReadById(Guid id)
+	public async Task<Function?> ReadById(Guid id)
 	{
-		throw new NotImplementedException();
+		return await db.Functions.ReadById(id);
 	}
 
 	public Task<IEnumerable<Function>> ReadList(IEnumerable<Guid> ids)

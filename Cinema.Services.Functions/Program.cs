@@ -1,10 +1,11 @@
 using Cinema.Services.Functions.Models;
 using Microsoft.AspNetCore.Http.HttpResults;
-using Microsoft.EntityFrameworkCore;
 using MassTransit;
 using Cinema.Services.Functions.Consumers;
 using Cinema.Services.Functions.Services;
 using Microsoft.OpenApi.Models;
+using Cinema.Services.Functions.Enums;
+using Cinema.Services.Functions.Repositories;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -15,9 +16,22 @@ builder.Services.AddSwaggerGen(x =>
     x.AddServer(new OpenApiServer { Url = "https://final-functions.azurewebsites.net" });
 });
 
+var settings = builder.Configuration;
+
 builder.Services.AddDbContext<FunctionsContext>();
-builder.Services.AddHttpClient<IMovieService, MovieService>(c => { c.BaseAddress = new Uri(builder.Configuration["Urls:Movies"]!); });
-builder.Services.AddHttpClient<ITicketService, TicketService>(c => { c.BaseAddress = new Uri(builder.Configuration["Urls:Tickets"]!); });
+builder.Services.AddDbContext<LiteFunctionsContext>();
+builder.Services.AddHttpClient<IMovieService, MovieService>(c => { c.BaseAddress = new Uri(settings["Urls:Movies"]!); });
+builder.Services.AddHttpClient<ITicketService, TicketService>(c => { c.BaseAddress = new Uri(settings["Urls:Tickets"]!); });
+
+var databaseProvider = settings["DatabaseProvider"];
+
+_ = databaseProvider switch
+{
+	nameof(DatabaseProviders.SqlServer)
+		=> builder.Services.AddTransient<IFunctionsRepository, FunctionsRepository>(),
+
+	_ => builder.Services.AddTransient<IFunctionsRepository, LiteFunctionsRepository>()
+};
 
 builder.Services.AddMassTransit(x =>
 {
@@ -26,7 +40,7 @@ builder.Services.AddMassTransit(x =>
 
 	x.UsingAzureServiceBus((context, cfg) =>
 	{
-		cfg.Host(builder.Configuration["ConnectionStrings:ServiceBus"]);
+		cfg.Host(settings["ConnectionStrings:ServiceBus"]);
 
         cfg.ConfigureEndpoints(context);
 	});
@@ -35,6 +49,11 @@ builder.Services.AddMassTransit(x =>
 });
 
 var app = builder.Build();
+
+using var scope = app.Services.CreateScope();
+
+var functionsRepository = scope.ServiceProvider.GetRequiredService<IFunctionsRepository>();
+
 app.UseHttpsRedirection();
 
 if (app.Environment.IsDevelopment())
@@ -43,57 +62,37 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
-app.MapGet("/", async (FunctionsContext db, Guid? movieId) =>
+app.MapGet("/", async (Guid? movieId) =>
 {
-	if(movieId is null)
-		return await db.Functions.ToListAsync();
-
-	return await db.Functions
-		.Where(x => x.MovieId == movieId)
-		.ToListAsync();
+	return await functionsRepository.ReadAll();
 });
 
-app.MapGet("/details/{functionId}", async Task<Results<Ok<Function>, NotFound>> (FunctionsContext db, Guid functionId) =>
+app.MapGet("/details/{id}", async Task<Results<Ok<Function>, NotFound>> (Guid id) =>
 {
-	var function = await db.Functions.Where(x => x.FunctionId == functionId).FirstOrDefaultAsync();
-
-	if (function == null) return TypedResults.NotFound();
+	var function = await functionsRepository.ReadById(id);
+	if (function is null) return TypedResults.NotFound();
 
 	return TypedResults.Ok(function);
 });
 
-app.MapPost("/create", async (FunctionsContext db, IMovieService movieService, Function function) =>
+app.MapPost("/create", async (IMovieService movieService, Function function) =>
 {
-	var movie = await movieService.GetById(function.MovieId);
-	if (movie is null)
-		return;
+	if (function is null) return;
 
-	db.Functions.Add(function);
-	await db.SaveChangesAsync();
+	var movie = await movieService.GetById(function.MovieId);
+	if (movie is null) return;
+
+	await functionsRepository.Create(function);
 }).WithName("AddMovie");
 
-app.MapPost("/edit", async (FunctionsContext db, Function function) =>
+app.MapPost("/edit", async (Function function) =>
 {
-	db.Functions.Update(function);
-	await db.SaveChangesAsync();
+	await functionsRepository.Update(function);
 });
 
-app.MapPost("/delete", async (FunctionsContext db, Guid functionId) =>
+app.MapPost("/delete", async (Guid id) =>
 {
-	var function = await db.Functions.FindAsync(functionId);
-
-	if (function is not null)
-		db.Functions.Remove(function);
-
-	await db.SaveChangesAsync();
-});
-
-
-app.MapGet("/GetByMovieId", async (FunctionsContext db, Guid movieId) =>
-{
-	var ticket = await db.Functions
-		.Where(x => x.MovieId == movieId)
-		.ToListAsync();
+	await functionsRepository.DeleteById(id);
 });
 
 app.Run();

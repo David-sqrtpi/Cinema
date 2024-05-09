@@ -1,6 +1,7 @@
+using Cinema.Services.Movies.Enums;
 using Cinema.Services.Movies.Models;
+using Cinema.Services.Movies.Repositories;
 using Microsoft.AspNetCore.Http.HttpResults;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.OpenApi.Models;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -13,8 +14,24 @@ builder.Services.AddSwaggerGen(x =>
 });
 
 builder.Services.AddDbContext<MoviesContext>();
+builder.Services.AddDbContext<LiteMoviesContext>();
+
+var databaseProvider = builder.Configuration["DatabaseProvider"];
+
+_ = databaseProvider switch
+{
+	nameof(DatabaseProviders.SqlServer)
+		=> builder.Services.AddTransient<IMoviesRepository, MoviesRepository>(),
+
+	_ => builder.Services.AddTransient<IMoviesRepository, LiteMoviesRepository>()
+};
 
 var app = builder.Build();
+
+using var scope = app.Services.CreateScope();
+
+var moviesRepository = scope.ServiceProvider.GetRequiredService<IMoviesRepository>();
+
 app.UseHttpsRedirection();
 
 if (app.Environment.IsDevelopment())
@@ -23,45 +40,33 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
-app.MapGet("/", async (MoviesContext db, Guid[]? ids) =>
+app.MapGet("/", async (Guid[]? ids) =>
 {
-    if (ids is null || ids.Length == 0)
-        return await db.Movies.ToListAsync();
-
-    return await db.Movies
-    .Where(x => ids.Contains(x.MovieId))
-    .ToListAsync();
+    return await moviesRepository.ReadAll();
 });
 
-app.MapGet("/details/{movieId}", async Task<Results<Ok<Movie>, NotFound>> (MoviesContext db, Guid movieId) =>
+app.MapGet("/details/{movieId}", async Task<Results<Ok<Movie>, NotFound>> (Guid movieId) =>
 {
-    var movie = await db.Movies.Where(x => x.MovieId == movieId).FirstOrDefaultAsync();
+    var movie = await moviesRepository.ReadById(movieId);
 
-    if (movie == null) return TypedResults.NotFound();
+    if (movie is null) return TypedResults.NotFound();
 
     return TypedResults.Ok(movie);
 });
 
-app.MapPost("/create", async (MoviesContext db, Movie movie) =>
+app.MapPost("/create", async (Movie movie) =>
 {
-    db.Movies.Add(movie);
-    await db.SaveChangesAsync();
+    await moviesRepository.Create(movie);
 }).WithName("AddMovie");
 
-app.MapPost("/edit", async (MoviesContext db, Movie movie) =>
+app.MapPost("/edit", async (Movie movie) =>
 {
-    db.Movies.Update(movie);
-    await db.SaveChangesAsync();
+    await moviesRepository.Update(movie);
 });
 
-app.MapPost("/delete", async (MoviesContext db, Guid movieId) =>
+app.MapPost("/delete", async (Guid movieId) =>
 {
-    var movie = await db.Movies.FindAsync(movieId);
-
-    if(movie is not null)
-        db.Movies.Remove(movie);
-
-    await db.SaveChangesAsync();
+    await moviesRepository.DeleteById(movieId);
 });
 
 app.Run();

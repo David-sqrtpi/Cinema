@@ -6,6 +6,8 @@ using Microsoft.AspNetCore.Mvc;
 using Cinema.Integration.Commands;
 using Cinema.Integration.Events;
 using Microsoft.OpenApi.Models;
+using Cinema.Services.Ticket.Enums;
+using Cinema.Services.Ticket.Repository;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -17,6 +19,17 @@ builder.Services.AddSwaggerGen(x =>
 });
 
 builder.Services.AddDbContext<TicketsContext>();
+builder.Services.AddDbContext<LiteTicketsContext>();
+
+var databaseProvider = builder.Configuration["DatabaseProvider"];
+
+_ = databaseProvider switch
+{
+	nameof(DatabaseProviders.SqlServer)
+		=> builder.Services.AddTransient<ITicketRepository, TicketRepository>(),
+
+	_ => builder.Services.AddTransient<ITicketRepository, LiteTicketRepository>()
+};
 
 builder.Services.AddMassTransit(x =>
 {
@@ -31,6 +44,11 @@ builder.Services.AddMassTransit(x =>
 });
 
 var app = builder.Build();
+
+using var scope = app.Services.CreateScope();
+
+var db = scope.ServiceProvider.GetRequiredService<ITicketRepository>();
+
 app.UseHttpsRedirection();
 
 if (app.Environment.IsDevelopment())
@@ -39,21 +57,21 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
-app.MapGet("/", (TicketsContext db) =>
+app.MapGet("/", async () =>
 {
-    return db.Tickets.ToListAsync();
+    return await db.ReadAll();
 });
 
-app.MapGet("/details/{ticketId}", async Task<Results<Ok<Ticket>, NotFound>> (TicketsContext db, Guid ticketId) =>
+app.MapGet("/details/{ticketId}", async Task<Results<Ok<Ticket>, NotFound>> (Guid ticketId) =>
 {
-    var ticket = await db.Tickets.Where(x => x.TicketId == ticketId).FirstOrDefaultAsync();
+    var ticket = await db.ReadById(ticketId);
 
     if (ticket == null) return TypedResults.NotFound();
 
     return TypedResults.Ok(ticket);
 });
 
-app.MapPost("/create", async Task<Results<Ok, BadRequest>> (TicketsContext db, [FromServices] IRequestClient<VerifyAvailabilityCommand> requestClient, [FromServices] IBus bus, Ticket ticket) => 
+app.MapPost("/create", async Task<Results<Ok, BadRequest>> ([FromServices] IRequestClient<VerifyAvailabilityCommand> requestClient, [FromServices] IBus bus, Ticket ticket) => 
 {
     var verifyAvailability = new VerifyAvailabilityCommand
     {
@@ -66,8 +84,7 @@ app.MapPost("/create", async Task<Results<Ok, BadRequest>> (TicketsContext db, [
     if (!response.Message.IsAvailableSeats)
         return TypedResults.BadRequest();
 
-    db.Tickets.Add(ticket);
-    await db.SaveChangesAsync();
+    await db.Create(ticket);
 
     var ticketPurchasedEvent = new TicketPurchasedEvent
     {
@@ -79,20 +96,14 @@ app.MapPost("/create", async Task<Results<Ok, BadRequest>> (TicketsContext db, [
     return TypedResults.Ok();
 });
 
-app.MapPost("/edit", async (TicketsContext db, Ticket ticket) =>
+app.MapPost("/edit", async (Ticket ticket) =>
 {
-    db.Tickets.Update(ticket);
-    await db.SaveChangesAsync();
+    await db.Update(ticket);
 });
 
-app.MapPost("/delete", async (TicketsContext db, Guid ticketId) =>
+app.MapPost("/delete", async (Guid ticketId) =>
 {
-    var ticket = await db.Tickets.FindAsync(ticketId);
-
-    if (ticket is not null)
-        db.Tickets.Remove(ticket);
-
-    await db.SaveChangesAsync();
+    await db.DeleteById(ticketId);
 });
 
 app.Run();

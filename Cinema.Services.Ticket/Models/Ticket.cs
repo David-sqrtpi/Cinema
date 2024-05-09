@@ -1,7 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-
-namespace Cinema.Services.Ticket.Models;
+﻿namespace Cinema.Services.Ticket.Models;
 
 public partial class Ticket
 {
